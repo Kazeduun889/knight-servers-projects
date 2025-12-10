@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KnightServers - CS2 Project</title>
+    <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/942/942748.png">
+
+    <style>
+        /* --- СТИЛИ БЕЗ ИЗМЕНЕНИЙ --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #050507; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: white; overflow: hidden; position: relative; }
+        
+        .video-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -3; overflow: hidden; }
+        .video-bg video { min-width: 100%; min-height: 100%; width: auto; height: auto; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); object-fit: cover; opacity: 0.6; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 10, 15, 0.6); background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px); background-size: 20px 20px; z-index: -2; backdrop-filter: blur(2px); }
+        .snow-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: hidden; }
+        .snowflake { position: absolute; top: -10px; background: white; border-radius: 50%; opacity: 0.8; animation: fall linear infinite; }
+        @keyframes fall { to { transform: translateY(110vh); } }
+
+        .preloader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #050507; z-index: 99999; display: flex; justify-content: center; align-items: center; transition: opacity 0.8s ease, visibility 0.8s; }
+        .preloader.done { opacity: 0; visibility: hidden; }
+        .loader-logo { font-size: 40px; font-weight: 900; letter-spacing: 5px; text-transform: uppercase; animation: pulse 2s infinite ease-in-out; text-align: center; }
+        .loader-logo span { color: #4f46e5; text-shadow: 0 0 20px rgba(79, 70, 229, 0.8); }
+        .loader-bar { width: 150px; height: 2px; background: rgba(255,255,255,0.1); margin: 20px auto 0; border-radius: 2px; overflow: hidden; }
+        .loader-bar::after { content: ''; display: block; width: 50%; height: 100%; background: #4f46e5; animation: loading 1.5s infinite ease-in-out; border-radius: 2px; }
+        @keyframes pulse { 0% { opacity: 0.5; transform: scale(0.98); } 50% { opacity: 1; transform: scale(1.05); } 100% { opacity: 0.5; transform: scale(0.98); } }
+        @keyframes loading { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
+
+        .site-header { text-align: center; margin-bottom: 50px; z-index: 10; opacity: 0; animation: fadeInDown 1s ease 2s forwards; }
+        .logo { font-size: 64px; font-weight: 900; text-transform: uppercase; letter-spacing: 4px; line-height: 1; text-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .logo span { color: #4f46e5; text-shadow: 0 0 20px rgba(79, 70, 229, 0.6); }
+        .slogan { font-size: 14px; color: #aaa; letter-spacing: 3px; text-transform: uppercase; margin-top: 10px; font-weight: 600; }
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+
+        .menu-wrapper { display: flex; gap: 15px; padding: 10px; z-index: 10; opacity: 0; animation: fadeInUp 1s ease 2.2s forwards; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .btn, .close-btn, .action-btn, .buy-btn-card, .social-btn { cursor: pointer; transition: all 0.2s ease; }
+        .btn { text-decoration: none; color: #e0e0e0; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 18px 36px; background: rgba(30, 30, 40, 0.6); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 10px; backdrop-filter: blur(10px); user-select: none; }
+        .btn:hover { color: #ffffff; background: #4f46e5; border-color: #4f46e5; box-shadow: 0 0 30px rgba(79, 70, 229, 0.6); transform: translateY(-4px); }
+
+        .status-widget {
+            position: fixed; bottom: 30px; left: 30px;
+            background: rgba(15, 15, 20, 0.9); border: 1px solid rgba(255, 255, 255, 0.1); border-left: 4px solid #22c55e;
+            padding: 15px 25px; border-radius: 12px; display: flex; flex-direction: column; gap: 5px;
+            backdrop-filter: blur(15px); z-index: 100; font-size: 12px; font-weight: 600; color: #ccc;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+        }
+        .status-row { display: flex; align-items: center; justify-content: space-between; width: 160px; }
+        .status-label { text-transform: uppercase; letter-spacing: 1px; font-size: 10px; color: #666; }
+        .status-value { color: white; font-family: 'Consolas', monospace; }
+        .status-value.ping { color: #22c55e; }
+        .status-dot-pulse { width: 8px; height: 8px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 10px #22c55e; animation: pulse-green 2s infinite; display: inline-block; margin-right: 5px; }
+        @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
+
+        .toast-notification {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); 
+            background: rgba(18, 18, 24, 0.95);
+            border: 1px solid #22c55e; color: white; padding: 20px 40px; border-radius: 12px;
+            font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 16px;
+            box-shadow: 0 0 50px rgba(34, 197, 94, 0.5); 
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 20001; display: flex; flex-direction: column; align-items: center; gap: 10px;
+            opacity: 0; visibility: hidden; pointer-events: none;
+        }
+        .toast-notification.show { opacity: 1; visibility: visible; transform: translate(-50%, -50%) scale(1); }
+        .toast-icon { font-size: 32px; color: #22c55e; }
+
+        .site-footer { position: fixed; bottom: 20px; width: 100%; text-align: center; color: rgba(255, 255, 255, 0.4); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; z-index: 90; pointer-events: none;}
+
+        .modal-window { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); background: rgba(22, 22, 29, 0.95); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 16px; padding: 30px; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9); opacity: 0; pointer-events: none; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 20; }
+        .modal-window.active { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: all; }
+        .modal-header { text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 15px; margin-bottom: 5px; }
+        .modal-header h2 { font-size: 24px; margin-bottom: 5px; color: white; }
+        .modal-header p { font-size: 13px; color: #aaa; }
+        .close-btn { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: #ccc; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 12px; text-transform: uppercase; transition: 0.2s; width: 100%; margin-top: auto; }
+        .close-btn:hover { background: rgba(255, 255, 255, 0.15); color: white; }
+        
+        .blur-target { transition: 0.4s; }
+        .blurred { opacity: 0; transform: scale(0.95); pointer-events: none; }
+
+        .rules-window { width: 700px; height: 600px; max-height: 85vh; }
+        .rules-content { flex-grow: 1; overflow-y: auto; padding-right: 15px; text-align: left; margin-bottom: 10px; } .rules-content::-webkit-scrollbar { width: 6px; } .rules-content::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 4px; } .rules-content::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 4px; } .rule-block { margin-bottom: 20px; background: rgba(255, 255, 255, 0.05); padding: 25px; border-radius: 12px; border-left: 4px solid #4f46e5; } .rule-title { font-weight: 800; color: #818cf8; margin-bottom: 12px; font-size: 18px; letter-spacing: 0.5px; } .rule-text { font-size: 14px; color: #f0f0f0; line-height: 1.7; }
+        .servers-window { width: 550px; } .server-card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 15px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; transition: 0.2s; } .server-card:hover { background: rgba(255, 255, 255, 0.06); border-color: #4f46e5; } .server-name { font-weight: bold; font-size: 15px; color: white; display: flex; align-items: center; gap: 8px; } .status-dot { width: 8px; height: 8px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 10px #22c55e; } .online-bar-bg { width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-top: 5px; } .online-bar-fill { height: 100%; background: #4f46e5; border-radius: 2px; } .action-btn { border: none; padding: 8px 12px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; text-transform: uppercase; text-decoration: none; display: inline-block; } .btn-connect { background: #4f46e5; color: white; } .btn-copy { background: rgba(255,255,255,0.1); color: #ccc; }
+        .shop-window { width: 900px; max-height: 80vh; } .shop-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; overflow-y: auto; padding: 5px; } .shop-grid::-webkit-scrollbar { width: 4px; } .shop-grid::-webkit-scrollbar-thumb { background: #4f46e5; } .product-card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px; text-align: center; transition: 0.3s; position: relative; } .product-card:hover { transform: translateY(-5px); border-color: #4f46e5; } .product-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: #4f46e5; } .product-card.premium::before { background: #eab308; } .product-card.admin::before { background: #ef4444; } .product-title { font-size: 18px; font-weight: 800; margin-bottom: 5px; text-transform: uppercase; } .product-price { font-size: 24px; font-weight: bold; margin-bottom: 15px; } .product-features li { font-size: 12px; color: #ccc; margin-bottom: 5px; list-style: none; position: relative; padding-left: 15px; text-align: left;} .product-features li::before { content: '•'; color: #4f46e5; position: absolute; left: 0; font-weight: bold; } .buy-btn-card { display: block; width: 100%; padding: 10px; background: #4f46e5; color: white; border-radius: 6px; font-weight: bold; text-decoration: none; }
+        .support-window { width: 400px; } .social-btn { display: flex; align-items: center; justify-content: center; text-decoration: none; padding: 15px; border-radius: 8px; font-weight: 600; color: white; margin-bottom: 5px; } .vk-btn { background: #0077FF; } .ds-btn { background: #5865F2; }
+
+        @media (max-width: 950px) { .shop-window { width: 90%; } .shop-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 650px) { 
+            .menu-wrapper { flex-direction: column; width: 100%; padding: 0 30px; } 
+            .modal-window { width: 90%; } .shop-grid { grid-template-columns: 1fr; } .logo { font-size: 42px; } 
+            .status-widget { bottom: 10px; left: 50%; transform: translateX(-50%); width: 90%; align-items: center;}
+            .site-footer { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOAST -->
+    <div class="toast-notification" id="toast">
+        <span class="toast-icon">✅</span>
+        <div style="display:flex; flex-direction:column; align-items:center;">
+            <span style="font-size:18px;">УСПЕШНО!</span>
+            <span id="toastText" style="font-size:12px; opacity:0.8;">IP адрес скопирован</span>
+        </div>
+    </div>
+
+    <!-- WIDGET -->
+    <div class="status-widget">
+        <div class="status-row">
+            <span class="status-label">System Status</span>
+            <span class="status-value"><span class="status-dot-pulse"></span>Online</span>
+        </div>
+        <div class="status-row">
+            <span class="status-label">Server Ping</span>
+            <span class="status-value ping" id="pingCounter">-- ms</span>
+        </div>
+        <div class="status-row">
+            <span class="status-label">Server FPS</span>
+            <span class="status-value">128.0</span>
+        </div>
+    </div>
+
+    <!-- PRELOADER -->
+    <div class="preloader" id="preloader">
+        <div class="loader-content">
+            <div class="loader-logo">KNIGHT<span>SERVERS</span></div>
+            <div class="loader-bar"></div>
+        </div>
+    </div>
+
+    <!-- BG -->
+    <div class="video-bg">
+        <video autoplay muted loop playsinline poster="https://cdn.akamai.steamstatic.com/apps/csgo/images/csgo_react/global/bg_video_poster.jpg">
+            <source src="https://cdn.akamai.steamstatic.com/apps/csgo/images/csgo_react/global/bg_video.webm" type="video/webm">
+        </video>
+    </div>
+    <div class="overlay"></div>
+    <div class="snow-container" id="snow"></div>
+
+    <!-- MAIN UI -->
+    <div id="mainContent" class="blur-target" style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+        <header class="site-header">
+            <div class="logo">KNIGHT<span>SERVERS</span></div>
+            <div class="slogan">Premium CS2 Experience</div>
+        </header>
+
+        <div class="menu-wrapper">
+            <div class="btn sound-hover sound-click" onclick="openModal('serversModal')">Сервера</div>
+            <div class="btn sound-hover sound-click" onclick="openModal('shopModal')">Магазин</div>
+            <div class="btn sound-hover sound-click" onclick="openModal('supportModal')">Поддержка</div>
+            <div class="btn sound-hover sound-click" onclick="openModal('rulesModal')">Правила</div>
+        </div>
+    </div>
+
+    <footer class="site-footer blur-target" id="footer">
+        &copy; 2024-2025 KnightServers. All Rights Reserved.
+    </footer>
+
+    <!-- RULES -->
+    <div class="modal-window rules-window" id="rulesModal">
+        <div class="modal-header"><h2>Правила Проекта</h2><p>Пожалуйста, ознакомьтесь с правилами</p></div>
+        <div class="rules-content">
+            <div class="rule-block"><div class="rule-title">1. ОБЩИЕ ПОЛОЖЕНИЯ</div><div class="rule-text">1.1. Заходя на сервер, вы автоматически соглашаетесь с данными правилами.<br>1.2. Незнание правил не освобождает вас от ответственности.</div></div>
+            <div class="rule-block"><div class="rule-title">2. ИГРОВОЙ ПРОЦЕСС</div><div class="rule-text">2.1. Запрещено использование стороннего ПО. Наказание: Вечный бан.<br>2.2. Запрещен мониторинг.</div></div>
+        </div>
+        <button class="close-btn sound-hover sound-click" onclick="closeAllModals()">Я ознакомился с правилами</button>
+    </div>
+
+    <!-- SERVERS (CORS FIX) -->
+    <div class="modal-window servers-window" id="serversModal">
+        <div class="modal-header"><h2>Наши Сервера</h2><p>Онлайн мониторинг</p></div>
+        
+        <!-- SERVER 1 (TEST CYBERSHOKE) -->
+        <div class="server-card">
+            <div class="server-info">
+                <div class="server-name"><div class="status-dot"></div> <span id="s1-name">Загрузка...</span></div>
+                <div class="server-map">
+                    <span id="s1-map">...</span> | <span id="s1-online" class="online-count">--/--</span>
+                </div>
+            </div>
+            <div class="server-actions">
+                <button class="action-btn btn-copy sound-hover sound-click" onclick="copyIP('37.230.137.10:27015')">IP</button>
+                <a href="steam://connect/37.230.137.10:27015" class="action-btn btn-connect sound-hover sound-click">Играть</a>
+            </div>
+        </div>
+
+        <!-- SERVER 2 (YOUR IP) -->
+        <div class="server-card">
+            <div class="server-info">
+                <div class="server-name"><div class="status-dot"></div> <span id="s2-name">Загрузка...</span></div>
+                <div class="server-map">
+                    <span id="s2-map">...</span> | <span id="s2-online" class="online-count">--/--</span>
+                </div>
+            </div>
+            <div class="server-actions">
+                <button class="action-btn btn-copy sound-hover sound-click" onclick="copyIP('209.97.178.52:27015')">IP</button>
+                <a href="steam://connect/209.97.178.52:27015" class="action-btn btn-connect sound-hover sound-click">Играть</a>
+            </div>
+        </div>
+        
+        <button class="close-btn sound-hover sound-click" onclick="closeAllModals()">Закрыть</button>
+    </div>
+
+    <!-- SHOP -->
+    <div class="modal-window shop-window" id="shopModal">
+        <div class="modal-header"><h2>Магазин</h2><p>Автовыдача 24/7</p></div>
+        <div class="shop-grid">
+            <div class="product-card"><div class="product-title">VIP</div><div class="product-price">149 ₽</div><ul class="product-features"><li>Префикс [VIP]</li><li>Скины (!ws)</li><li>Резерв слот</li></ul><a href="#" class="buy-btn-card sound-hover sound-click">Купить</a></div>
+            <div class="product-card premium"><div class="product-title" style="color:#eab308;">Premium</div><div class="product-price">299 ₽</div><ul class="product-features"><li>Всё от VIP</li><li>Повышенный XP</li><li>Модели агентов</li></ul><a href="#" class="buy-btn-card sound-hover sound-click" style="background:#eab308; color:black;">Купить</a></div>
+            <div class="product-card admin"><div class="product-title" style="color:#ef4444;">Admin</div><div class="product-price">499 ₽</div><ul class="product-features"><li>Админ-меню</li><li>Бан/Кик</li><li>Смена карты</li></ul><a href="#" class="buy-btn-card sound-hover sound-click" style="background:#ef4444;">Купить</a></div>
+        </div>
+        <button class="close-btn sound-hover sound-click" onclick="closeAllModals()">Закрыть</button>
+    </div>
+
+    <!-- SUPPORT -->
+    <div class="modal-window support-window" id="supportModal">
+        <div class="modal-header"><h2>Поддержка</h2></div>
+        <a href="https://vk.com/" class="social-btn vk-btn sound-hover sound-click">ВКонтакте</a>
+        <a href="https://discord.com/" class="social-btn ds-btn sound-hover sound-click">Discord</a>
+        <button class="close-btn sound-hover sound-click" onclick="closeAllModals()">Назад</button>
+    </div>
+
+    <script>
+        // --- SFX ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
+        function playUiSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            if (type === 'hover') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(400, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime+0.1); gain.gain.setValueAtTime(0.05, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.1); osc.start(); osc.stop(audioCtx.currentTime+0.1);
+            } else if (type === 'click') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(150, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime+0.1); gain.gain.setValueAtTime(0.08, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.1); osc.start(); osc.stop(audioCtx.currentTime+0.1);
+            }
+        }
+        document.querySelectorAll('.sound-hover').forEach(el => el.addEventListener('mouseenter', () => playUiSound('hover')));
+        document.querySelectorAll('.sound-click').forEach(el => el.addEventListener('mousedown', () => playUiSound('click')));
+
+        // --- GENERAL ---
+        window.addEventListener('load', () => { setTimeout(() => { document.getElementById('preloader').classList.add('done'); }, 2000); });
+        function openModal(modalId) { playUiSound('click'); document.getElementById('mainContent').classList.add('blurred'); document.getElementById('footer').classList.add('blurred'); document.getElementById(modalId).classList.add('active'); }
+        function closeAllModals() { playUiSound('click'); document.querySelectorAll('.modal-window').forEach(m => m.classList.remove('active')); document.getElementById('mainContent').classList.remove('blurred'); document.getElementById('footer').classList.remove('blurred'); }
+        function copyIP(text) { playUiSound('click'); navigator.clipboard.writeText(text).then(() => { const toast = document.getElementById('toast'); toast.classList.add('show'); setTimeout(() => { toast.classList.remove('show'); }, 2500); }); }
+        function updatePing() { const pingEl = document.getElementById('pingCounter'); const randomPing = Math.floor(Math.random()*(45-15+1)+15); pingEl.innerText = randomPing + " ms"; } setInterval(updatePing, 2000);
+        document.addEventListener("DOMContentLoaded", function() { const snowContainer = document.getElementById('snow'); for (let i = 0; i < 50; i++) { let snowflake = document.createElement('div'); snowflake.classList.add('snowflake'); snowflake.style.left = Math.random() * 100 + 'vw'; snowflake.style.animationDuration = Math.random() * 3 + 4 + 's'; snowflake.style.animationDelay = Math.random() * 5 + 's'; let size = Math.random() * 3 + 2; snowflake.style.width = size + 'px'; snowflake.style.height = size + 'px'; snowflake.style.opacity = Math.random() * 0.5 + 0.3; snowContainer.appendChild(snowflake); } });
+
+        // --- REAL MONITORING (CORS PROXY FIX) ---
+        async function fetchServerStatus(ip, nameElId, mapElId, onlineElId) {
+            try {
+                // 1. Очищаем IP от порта для поиска
+                const cleanIp = ip.split(':')[0]; 
+                
+                // 2. Используем ПРОКСИ api.allorigins.win чтобы обойти блокировку
+                const apiUrl = `https://api.battlemetrics.com/servers?filter[search]=${cleanIp}&filter[game]=csgo&page[size]=1`;
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`;
+
+                const response = await fetch(proxyUrl);
+                const data = await response.json();
+
+                if (data.data && data.data.length > 0) {
+                    const server = data.data[0].attributes;
+                    document.getElementById(nameElId).innerText = server.name.length > 25 ? server.name.substring(0, 25) + "..." : server.name;
+                    document.getElementById(mapElId).innerText = server.details.map;
+                    document.getElementById(onlineElId).innerText = `${server.players}/${server.maxPlayers}`;
+                    document.getElementById(onlineElId).style.color = "#22c55e"; 
+                } else {
+                    // Сервер не найден
+                    document.getElementById(nameElId).innerText = "Server Offline / Hidden";
+                    document.getElementById(nameElId).style.color = "#ef4444";
+                    document.getElementById(mapElId).innerText = "---";
+                    document.getElementById(onlineElId).innerText = "0/0";
+                }
+            } catch (err) {
+                console.error("Monitor Error:", err);
+                document.getElementById(nameElId).innerText = "Connection Error";
+                document.getElementById(nameElId).style.color = "#ef4444";
+            }
+        }
+
+        // Запуск
+        setInterval(() => {
+            fetchServerStatus('37.230.137.10', 's1-name', 's1-map', 's1-online'); // Тест
+            fetchServerStatus('209.97.178.52', 's2-name', 's2-map', 's2-online'); // Твой
+        }, 15000);
+
+        fetchServerStatus('37.230.137.10', 's1-name', 's1-map', 's1-online');
+        fetchServerStatus('209.97.178.52', 's2-name', 's2-map', 's2-online');
+    </script>
+</body>
+</html>
